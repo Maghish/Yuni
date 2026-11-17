@@ -157,7 +157,7 @@ async function logDatabaseUpdate(oldDB, newDB, logReasonData) {
 
 	const changes = objectComparer(oldDB, newDB, logReasonData.compareType);
 
-	if (changes == []) return;
+	if (changes.length === 0) return;
 
 	// Log embed creation.
 
@@ -234,7 +234,10 @@ async function putShopDB(shopDB, logReasonData) {
 
 	const oldShopDB = getShopDB();
 
-	await logDatabaseUpdate(oldShopDB, shopDB, logReasonData);
+	await logDatabaseUpdate(oldShopDB, shopDB, {
+		...logReasonData,
+		compareType: 'shop',
+	});
 
 	// Now we will write the config to shop.json
 
@@ -255,7 +258,10 @@ async function putUserDB(userDB, logReasonData) {
 
 	const oldUserDB = getUserDB();
 
-	await logDatabaseUpdate(oldUserDB, userDB, logReasonData);
+	await logDatabaseUpdate(oldUserDB, userDB, {
+		...logReasonData,
+		compareType: 'user',
+	});
 
 	// Now we will write the config to users.json
 

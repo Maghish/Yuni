@@ -12,18 +12,12 @@
  * @property {string | number} oldValue
  */
 
-const internalChanges = [];
-
-function internalCompare(oldObj, newObj, id, type) {
+function internalCompare(oldObj = {}, newObj = {}, id, type, internalChanges = []) {
 	for (const property in newObj) {
-		if (typeof newObj[property] === 'object') {
-			if (type === 'user') {
-				internalCompare(oldObj[property], newObj[property], id, type);
-			} else {
-				internalCompare(oldObj[property], newObj[property], id, type);
-			}
+		if (typeof newObj[property] === 'object' && newObj[property] !== null) {
+			internalCompare(oldObj?.[property] || {}, newObj[property], id, type, internalChanges);
 		} else {
-			if (oldObj[property] !== newObj[property]) {
+			if (oldObj?.[property] !== newObj[property]) {
 				if (type === 'user') {
 					internalChanges.push({
 						property: property,
@@ -31,7 +25,7 @@ function internalCompare(oldObj, newObj, id, type) {
 						userId: id,
 						name: property,
 						newValue: newObj[property],
-						oldValue: oldObj[property],
+						oldValue: oldObj?.[property],
 					});
 				} else {
 					internalChanges.push({
@@ -39,7 +33,7 @@ function internalCompare(oldObj, newObj, id, type) {
 						type: type,
 						name: id,
 						newValue: newObj[property],
-						oldValue: oldObj[property],
+						oldValue: oldObj?.[property],
 					});
 				}
 			}
@@ -57,15 +51,16 @@ function objectComparer(oldObj, newObj, type) {
 	const changes = [];
 
 	for (let key = 0; key < newObj.length; key++) {
-		if (typeof newObj[key] === 'object') {
-			let internalType;
+		if (typeof newObj[key] === 'object' && newObj[key] !== null) {
+			const internalType =
+				type === 'user' ? newObj[key].user_id : newObj[key].name;
 
-			if (type === 'user') {
-				internalType = oldObj[key].user_id;
-			} else {
-				internalType = oldObj[key].name;
-			}
-			const internalChanges = internalCompare(oldObj[key], newObj[key], internalType, type);
+			const internalChanges = internalCompare(
+				oldObj[key] || {},
+				newObj[key],
+				internalType,
+				type,
+			);
 
 			if (internalChanges === null) {
 				continue;
