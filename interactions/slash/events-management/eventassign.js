@@ -38,6 +38,7 @@ module.exports = {
 		if (config.internal.owner_id !== interaction.user.id) {
 			await interaction.reply({
 				content: '-# Access Denied',
+				ephemeral: true
 			});
 		}
 
