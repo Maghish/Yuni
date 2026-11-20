@@ -1,8 +1,8 @@
 /**
  * @file Event participants role reset command.
  * @author Maghish
- * @since 3.1.0
- * @version 3.1.0
+ * @since 3.2.0
+ * @version 3.2.0
  */
 
 const { SlashCommandBuilder } = require('discord.js');

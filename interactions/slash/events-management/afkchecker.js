@@ -1,8 +1,8 @@
 /**
  * @file Afk Checker Command
  * @author Maghish
- * @since 3.1.0
- * @version 3.1.0
+ * @since 3.2.0
+ * @version 3.2.0
  */
 
 const {
