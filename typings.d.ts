@@ -736,3 +736,43 @@ export interface LogReasonData {
 	 */
 	comments?: string;
 }
+
+/**
+ * Represents a single logged event entry in database/events.json.
+ */
+export interface EventLogEntry {
+	id: string;
+	name: string;
+	host_id: Discord.Snowflake;
+	role_id: Discord.Snowflake | null;
+	participants: Discord.Snowflake[];
+	winners: Discord.Snowflake[];
+	losers: Discord.Snowflake[];
+	pity_awarded: number;
+	pity_reset_on_win: boolean;
+	notes: string | null;
+	timestamp: number;
+}
+
+/**
+ * Represents per-user event participation and pity stats in database/events.json.
+ */
+export interface EventUserStats {
+	user_id: Discord.Snowflake;
+	participated: number;
+	won: number;
+	lost: number;
+	pity_points: number;
+	loss_streak: number;
+	best_loss_streak: number;
+	last_event_id: string | null;
+	last_event_at: number | null;
+}
+
+/**
+ * Represents the Events & Pity Database (database/events.json).
+ */
+export interface EventsDatabase {
+	events: EventLogEntry[];
+	users: Record<Discord.Snowflake, EventUserStats>;
+}
