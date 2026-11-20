@@ -17,6 +17,7 @@ const LogTypes = {
 	ChatGameUnscrambleTheWord: 'Chat Game: Unscramble The Word',
 	CurrencyCommandAdminUpdate: 'Command [Misc]: Admin Update',
 	CurrencyCommandBuy: 'Command [Currency]: Buy',
+	CurrencyCommandConvertPity: 'Command [Currency]: Convert Pity',
 	CurrencyCommandDaily: 'Command [Currency]: Daily',
 	CurrencyCommandTransfer: 'Command [Currency]: Transfer',
 	EconomyCommandBeg: 'Command [Economy]: Beg',

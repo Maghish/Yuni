@@ -19,6 +19,10 @@ const { EmbedBuilder } = require('discord.js');
 const manager = require('../../../functions/database');
 const { DatabaseUser } = require('../../../functions/database/create');
 const { LogTypes } = require('../../../functions/constants');
+const {
+	convertPityToCoins,
+	PITY_TO_COINS_RATE,
+} = require('../../../functions/database/events');
 
 /**
  * @type {import('../../../typings').SlashInteractionCommand}
@@ -67,9 +71,24 @@ module.exports = {
 						.setDescription('The amount of currency to be removed.')
 						.setRequired(true),
 				),
+		)
+		.addSubcommand((subcommand) =>
+			subcommand
+				.setName('convert')
+				.setDescription(
+					`Convert your pity points into Nyaru Coins (1 pity = ${PITY_TO_COINS_RATE} coins).`,
+				)
+				.addIntegerOption((option) =>
+					option
+						.setName('amount')
+						.setMinValue(1)
+						.setDescription(
+							'Pity points to convert (leave empty to convert all).',
+						)
+						.setRequired(false),
+				),
 		),
 
-	ownerOnly: true,
 	async execute(interaction) {
 		const { options } = interaction;
 
@@ -77,11 +96,69 @@ module.exports = {
 
 		const subCommand = options.getSubcommand();
 
-		// Get User Database & Config from the Manager.
-
-		const userDB = manager.getUserDB();
+		// Get Config from the Manager.
 
 		const config = manager.getConfigFile();
+
+		// Handle pity-to-currency conversion (available to all users).
+
+		if (subCommand === 'convert') {
+			const amount = options.getInteger('amount');
+			const result = await convertPityToCoins(
+				interaction.user.id,
+				amount,
+				interaction.user,
+			);
+
+			if (!result.ok) {
+				await interaction.reply({
+					content: `-# ${result.error}`,
+					ephemeral: true,
+				});
+				return;
+			}
+
+			const { name, emoji } = config.settings.currency;
+
+			const embed = new EmbedBuilder()
+				.setTitle('Pity Conversion Successful!')
+				.setDescription(
+					`You converted **${result.pointsConverted}** pity point(s) into **${result.coinsEarned} ${emoji} ${name}**!\n*(Rate: 1 pity point = ${result.rate} ${emoji} ${name})*`,
+				)
+				.setColor('Green')
+				.addFields(
+					{
+						name: 'Pity Points',
+						value: `${result.previousPity} → **${result.remainingPity}**`,
+						inline: true,
+					},
+					{
+						name: `${name}`,
+						value: `${result.oldBalance} ${emoji} → **${result.newBalance} ${emoji}**`,
+						inline: true,
+					},
+				)
+				.setTimestamp();
+
+			await interaction.reply({
+				embeds: [embed],
+			});
+			return;
+		}
+
+		// Owner-only check for admin currency management (add / remove).
+
+		if (interaction.user.id !== config.internal.owner_id) {
+			await interaction.reply({
+				content: 'You are not authorized to run this interaction!',
+				ephemeral: true,
+			});
+			return;
+		}
+
+		// Get User Database from the Manager.
+
+		const userDB = manager.getUserDB();
 
 		/**
 		 * Amount of Currency to be Added/Removed.

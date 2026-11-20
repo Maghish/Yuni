@@ -7,6 +7,11 @@
 
 const fs = require('fs');
 const path = require('path');
+const manager = require('./index');
+const { DatabaseUser } = require('./create');
+const { LogTypes } = require('../constants');
+
+const PITY_TO_COINS_RATE = 24;
 
 const eventsPath = path.join(process.cwd(), 'database', 'events.json');
 
@@ -260,12 +265,97 @@ function formatUserList(
 	return lines.join(separator);
 }
 
+/**
+ * Converts a user's pity points into currency coins at PITY_TO_COINS_RATE.
+ * Deducts pity synchronously before writing user balance to prevent double-spends.
+ * @param {string} userId Target Discord user ID.
+ * @param {number | null} [amount] Number of pity points to convert (null = convert all).
+ * @param {import('discord.js').User} [initiator] Discord user initiating the conversion (for logging).
+ * @returns {Promise<{ ok: false, error: string } | { ok: true, pointsConverted: number, coinsEarned: number, previousPity: number, remainingPity: number, oldBalance: number, newBalance: number, rate: number }>}
+ */
+async function convertPityToCoins(userId, amount = null, initiator = undefined) {
+	const eventsDB = getEventsDB();
+	const eventUser = eventsDB.users[userId];
+	const previousPity = eventUser ? eventUser.pity_points : 0;
+
+	if (previousPity <= 0) {
+		return {
+			ok: false,
+			error: 'You do not have any pity points to convert!',
+		};
+	}
+
+	const pointsToConvert =
+		amount === null || amount === undefined
+			? previousPity
+			: Math.floor(Number(amount));
+
+	if (!Number.isFinite(pointsToConvert) || pointsToConvert < 1) {
+		return {
+			ok: false,
+			error: 'Please enter at least **1** pity point to convert.',
+		};
+	}
+
+	if (pointsToConvert > previousPity) {
+		return {
+			ok: false,
+			error: `You only have **${previousPity}** pity point(s) available to convert.`,
+		};
+	}
+
+	const coinsEarned = pointsToConvert * PITY_TO_COINS_RATE;
+
+	// Deduct pity points synchronously first to prevent race-condition double spends.
+	eventUser.pity_points = previousPity - pointsToConvert;
+	saveEventsDB(eventsDB);
+
+	// Credit coins to user's currency balance.
+	const userDB = manager.getUserDB();
+	const config = manager.getConfigFile();
+	let dbUser = userDB.find((m) => m.user_id == userId);
+
+	if (!dbUser) {
+		dbUser = new DatabaseUser(userId);
+		userDB.push(dbUser);
+	}
+
+	const oldBalance = dbUser.balance;
+	dbUser.balance += coinsEarned;
+
+	const idx = userDB.indexOf(dbUser);
+	if (idx !== -1) {
+		userDB[idx] = dbUser;
+	} else {
+		userDB.push(dbUser);
+	}
+
+	await manager.putUserDB(userDB, {
+		type: LogTypes.CurrencyCommandConvertPity,
+		initiator,
+		comments: `<@${userId}> converted ${pointsToConvert} pity point(s) into ${coinsEarned} ${config.settings.currency.name}.`,
+	});
+
+	return {
+		ok: true,
+		pointsConverted: pointsToConvert,
+		coinsEarned,
+		previousPity,
+		remainingPity: eventUser.pity_points,
+		oldBalance,
+		newBalance: dbUser.balance,
+		rate: PITY_TO_COINS_RATE,
+	};
+}
+
 module.exports = {
+	PITY_TO_COINS_RATE,
 	getEventsDB,
 	saveEventsDB,
 	getOrCreateEventUser,
 	getNextEventId,
 	recordEvent,
 	adjustUserPity,
+	convertPityToCoins,
 	formatUserList,
 };
